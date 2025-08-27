@@ -1,0 +1,31 @@
+import std::vec::Vec3f
+import @core::ray::Ray
+import @core::hitrec::HitRec
+import @core::object::Object
+
+
+struct Sphere {
+    pos: Vec3f
+    r: f32
+}
+
+def Sphere::hit(&this, ray: &Ray, rec: &HitRec, parent: &Object): bool {
+    let oc = .pos - ray.pos
+    let a = ray.dir.length_sq()
+    let b = -2.0 * ray.dir.dot(oc)
+    let c = oc.length_sq() - .r * .r
+    let disc = b * b - 4.0 * a * c
+    
+    if disc < 0.0 then return false
+    let t0 = (-b - disc.sqrt()) / (2.0 * a)
+    if t0 < 0.0 then t0 = (-b + disc.sqrt()) / (2.0 * a)
+    if t0 < 0.0 then return false
+    if t0 > rec.t then return false
+    rec.t = t0
+    rec.pos = ray.at(t0)
+    rec.norm = (rec.pos - .pos).normalized()
+    rec.uv.x = 0.5 + rec.norm.z.atan2(rec.norm.x) / -std::math::TAU
+    rec.uv.y = 0.5 + rec.norm.y.asin() / std::math::PI
+    rec.obj = parent
+    return true
+}

@@ -1,0 +1,11 @@
+import std::vec::{ Vec3f, Vec2f }
+import @core::object::Object
+
+
+struct HitRec {
+    t: f32
+    obj: &Object
+    norm: Vec3f
+    pos: Vec3f
+    uv: Vec2f
+}

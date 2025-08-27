@@ -1,0 +1,29 @@
+import std::vec::Vec3f
+
+import @core::object::Object
+import @core::ray::Ray
+import @core::matrix::Matrix
+import @core::hitrec::HitRec
+
+
+
+struct Transformed {
+    obj: &Object
+    transform: Matrix
+    inverse: Matrix
+}
+
+def Transformed::hit(&this, ray: &Ray, rec: &HitRec, parent: &Object): bool {
+    let transformed_ray = Ray(this.inverse * ray.pos, this.inverse % ray.dir)
+    let did_hit = this.obj.hit(&transformed_ray, rec)
+    if did_hit {
+        rec.pos = ray.at(rec.t)
+        rec.norm = (this.inverse.transpose() * rec.norm).normalized()
+        rec.obj = .obj
+    }
+    return did_hit
+}
+
+def Transformed::new(obj: &Object, transform: Matrix): &Object {
+    return @new Object::Transformed(Color(Vec3f(0.8, 0.7, 0.6)), Reflective, Transformed(obj, transform, transform.invert()))
+}

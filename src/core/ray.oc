@@ -1,0 +1,11 @@
+import std::vec::Vec3f
+
+
+struct Ray {
+    pos: Vec3f
+    dir: Vec3f
+}
+
+def Ray::at(this, t: f32): Vec3f {
+    return .pos + t * .dir
+}

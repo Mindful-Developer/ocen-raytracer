@@ -1,0 +1,72 @@
+import std::fs
+import std::vec::{ Vec3f, Vec2f }
+import @objects::triangle::Triangle
+import @core::object::Object
+import @core::ray::Ray
+import @core::hitrec::HitRec
+import @core::bvh::BVH
+
+
+struct Mesh {
+    triangles: $[Triangle]
+    bvh: &BVH<Triangle>
+}
+
+def Mesh::hit(&this, ray: &Ray, rec: &HitRec, parent: &Object): bool {
+    // let hit = false
+    // for tri in .triangles.iter() {
+    //     hit = tri.hit(ray, rec, parent) or hit
+    // }
+    return .bvh.hit(ray, rec, parent)
+}
+
+def Mesh::from_obj(filename: str): Mesh {
+    let file = fs::read_file(filename)
+    defer file.free()
+
+    let sv = file.sv()
+    let vectors: $[Vec3f] = $[]
+    defer vectors.free()
+
+    let normals: $[Vec3f] = $[]
+    defer normals.free()
+
+    let textures: $[Vec2f] = $[]
+    defer textures.free()
+
+    let triangles: $[Triangle] = $[]
+    for line in sv.lines() {
+        match line.chop_word() {
+            "v" => vectors.push(Vec3f(line.chop_f32(), line.chop_f32(), line.chop_f32()))
+            "vn" => normals.push(Vec3f(line.chop_f32(), line.chop_f32(), line.chop_f32()))
+            "vt" => textures.push(Vec2f(line.chop_f32(), line.chop_f32()))
+            "f" => {
+                let s0 = line.chop_by_delim(' ')
+                let v0 = vectors[s0.chop_u32() - 1]
+                s0.chop_left(1)
+                let t0 = textures[s0.chop_u32() - 1]
+                s0.chop_left(1)
+                let n0 = normals[s0.chop_u32() - 1]
+
+                let s1 = line.chop_by_delim(' ')
+                let v1 = vectors[s1.chop_u32() - 1]
+                s1.chop_left(1)
+                let t1 = textures[s1.chop_u32() - 1]
+                s1.chop_left(1)
+                let n1 = normals[s1.chop_u32() - 1]
+
+                let s2 = line.chop_by_delim(' ')
+                let v2 = vectors[s2.chop_u32() - 1]
+                s2.chop_left(1)
+                let t2 = textures[s2.chop_u32() - 1]
+                s2.chop_left(1)
+                let n2 = normals[s2.chop_u32() - 1]
+                
+                triangles += Triangle(v0, v1, v2, n0, n1, n2, t0, t1, t2)
+            }
+            else => {}
+        }
+    }
+    let bvh = BVH<Triangle>::create(triangles, 0, triangles.size)
+    return Mesh(triangles, bvh)
+}

@@ -1,0 +1,29 @@
+import @core::texture::Texture
+import @core::materialtype::MaterialType
+import @core::ray::Ray
+import @core::hitrec::HitRec
+import @objects::sphere::Sphere
+import @objects::triangle::Triangle
+import @objects::mesh::Mesh
+import @objects::transformed::Transformed
+
+
+enum Object {
+    texture: Texture
+    mat: MaterialType
+
+    Sphere(sphere: Sphere)
+    Triangle(tri: Triangle)
+    Mesh(mesh: Mesh)
+    Transformed(trans: Transformed)
+}
+
+def Object::hit(&this, ray: &Ray, rec: &HitRec): bool {
+    let did_hit = match *this {
+        Sphere(sphere) => sphere.hit(ray, rec, this)
+        Triangle(tri) => tri.hit(ray, rec, this)
+        Mesh(mesh) => mesh.hit(ray, rec, this)
+        Transformed(trans) => trans.hit(ray, rec, this)
+    }
+    return did_hit
+}

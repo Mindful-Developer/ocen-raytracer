@@ -1,0 +1,31 @@
+import std::vec::Vec3f
+import std::image::{ Image, bilinear_interp }
+
+
+
+def get_interpolated(img: &Image, xf: f32, yf: f32): Vec3f {
+    xf = xf.clamp01() * (img.width - 1) as f32
+    yf = yf.clamp01() * (img.height - 1) as f32
+
+    let x_fl = xf as u32
+    let y_fl = yf as u32
+
+    let x_cl = if xf != (x_fl as f32) then x_fl + 1 else x_fl
+    let y_cl = if yf != (y_fl as f32) then y_fl + 1 else y_fl
+
+    let a = img.get(x_fl, y_fl)
+    let b = img.get(x_cl, y_fl)
+    let c = img.get(x_fl, y_cl)
+    let d = img.get(x_cl, y_cl)
+
+    let x_ratio = xf - (x_fl as f32)
+    let y_ratio = yf - (y_fl as f32)
+
+    let col = Vec3f(
+        bilinear_interp(x_ratio, y_ratio, a.r as f32, b.r as f32, c.r as f32, d.r as f32),
+        bilinear_interp(x_ratio, y_ratio, a.g as f32, b.g as f32, c.g as f32, d.g as f32),
+        bilinear_interp(x_ratio, y_ratio, a.b as f32, b.b as f32, c.b as f32, d.b as f32),
+    )
+    return col / 255.0
+}
+

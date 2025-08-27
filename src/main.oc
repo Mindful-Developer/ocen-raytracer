@@ -1,0 +1,97 @@
+import std::image::{ Image, Color, bilinear_interp }
+import std::vec::{ Vec3f, Vec2f }
+import std::math::PI
+import std::math
+import std::fs
+import std::random::{ RandomState, randf32 }
+import std::video_renderer::VideoRenderer
+import std::gc
+import @core::camera::Camera
+import @core::matrix::Matrix
+import @core::scene::Scene
+import @core::ray::Ray
+import @core::object::Object
+import @objects::sphere::Sphere
+import @objects::triangle::Triangle
+import @objects::mesh::Mesh
+import @objects::transformed::Transformed
+import @core::bvh::BVH
+
+
+def main() {
+    let image_width = 1280
+    let image_height = 720
+    let vr = VideoRenderer::create(SDL, image_width, image_height, 30)
+    let num_samples = 8
+    let focal_length = 4.5
+    let camera_pos = Vec3f(0.12, 0.0, 6.0)
+    let image = Image::new(image_width, image_height)
+    let camera = Camera::make(image_width, image_height, focal_length, camera_pos, num_samples)
+    let transformation = Matrix::for_rotate_x(PI / 4.0) * Matrix::for_scale(Vec3f(0.25, 1.0, 0.25))
+    let x = 0
+    gc::init(&x)
+    for let i = 0; true; i += 1 {
+        let time = i as f32 / 30.0
+        let scene = make_scene(time)
+        render(image, &camera, &scene)
+        vr.send_frame(image)
+        gc::collect()
+    }
+    // let scene = make_scene(0.0)
+    // render(image, &camera, &scene)
+    // image.save("./build/out.png")
+}
+
+def render(img: &Image, camera: &Camera, scene: &Scene) {
+    let completed = 0
+
+    OMP_PARALLEL_FOR
+    for let j = 0; j < img.height; j += 1 {
+        let rng = RandomState::make(j)
+        for let i = 0; i < img.width; i += 1 {
+            let color = Vec3f(0.0, 0.0, 0.0)
+            for let s = 0; s < camera.num_samples ; s += 1 {
+                let ray = camera.create_ray(i, j, &rng)
+                color = color + scene.hit(&ray, &rng)
+            }
+            img.set(i, j, Color::from_vec(color / camera.num_samples as f32))
+        }
+        completed += 1
+    }
+}
+
+def make_scene(time:f32): Scene {
+    return Scene($[
+        @new Object::Sphere(Color(Vec3f(0.8, 0.7, 0.6)), Reflective, Sphere(Vec3f(-1.0, -0.21, -1.0), 0.3)),
+        Transformed::new(
+            @new Object::Sphere(Color(Vec3f(0.33, 0.4, 0.7)), Diffused, Sphere(Vec3f(-2.0, -0.11, -2.0), 0.4)),
+            Matrix::for_scale(Vec3f(1.0, 0.5, 1.0))
+        ),
+        Transformed::new(
+            @new Object::Sphere(Image(Image::load("src/earth.png")), Diffused, Sphere(Vec3f(0.0, 0.0, 0.0), 0.5)),
+            Matrix::for_translate(Vec3f(1.0, -0.01, -1.0)) * Matrix::for_rotate_y(time)
+        ),
+        @new Object::Mesh(Checkerboard(20.0), Diffused, Mesh::from_obj("src/cube.obj")),
+        Transformed::new(
+            @new Object::Mesh(Image(Image::load("src/bouncy.png")), Diffused, Mesh::from_obj("src/teapot.obj")),
+            Matrix::for_rotate_y(-time * 1.5)
+        )
+    ])
+}
+
+def std::image::Color::from_vec(vec: Vec3f): Color {
+    let ir = (vec.x * 255.999) as u8
+    let ig = (vec.y * 255.999) as u8
+    let ib = (vec.z * 255.999) as u8
+
+    return Color(ir, ig, ib)
+}
+
+
+/// internal
+
+@compiler c_flag "-O3 -fopenmp"
+
+// This is a super-ugly hack to allow us to use C-preprocessor macros
+[extern "#pragma omp parallel for schedule(dynamic, 32)"]
+let OMP_PARALLEL_FOR: i32

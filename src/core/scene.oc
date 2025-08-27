@@ -1,0 +1,57 @@
+import std::vec::Vec3f
+import std::random::{ RandomState, randf32 }
+import @core::ray::Ray
+import @core::hitrec::HitRec
+import @core::object::Object
+
+
+struct Scene {
+    objects: $[&Object]
+}
+
+def Scene::sky_color(&this, ray: &Ray): Vec3f {
+    let a = 0.5 * (ray.dir.y + 1.0)
+    return (1.0 - a) * Vec3f(1.0, 1.0, 1.0) + a * Vec3f(0.5, 0.7, 1.0)
+}
+
+const num_bounces: u32 = 40
+
+def random_point_on_sphere(rng: &RandomState): Vec3f {
+    while true {
+        let p = Vec3f(
+            randf32(rng),
+            randf32(rng),
+            randf32(rng),
+        ) * 2.0 - 1.0
+        let lensq = p.length_sq()
+        if (10.0 as f64).pow(-160.0 as f64) as f32 < lensq <= 1.0 then return p / lensq.sqrt()
+    }
+    assert false
+}
+
+def Scene::hit(&this, ray: &Ray, rng: &RandomState): Vec3f {
+    let accum = Vec3f(1.0, 1.0, 1.0)
+    let current_ray = *ray
+    for let i = 0; i < num_bounces; i += 1 {
+        let hit = false
+        let hit_rec: HitRec
+        hit_rec.t = f32::inf()
+        for obj in .objects.iter() {
+            hit = obj.hit(&current_ray, &hit_rec) or hit
+        }
+        // if hit return hit_rec.norm * 0.5 + 0.5
+        // if hit return hit_rec.obj.texture.get(hit_rec.uv)
+
+        if not hit return .sky_color(&current_ray) * accum
+        accum = accum * hit_rec.obj.texture.get(hit_rec.uv)
+        current_ray.dir = match hit_rec.obj.mat {
+            Diffused => {
+                let s = hit_rec.pos + hit_rec.norm + random_point_on_sphere(rng)
+                yield (s - hit_rec.pos).normalized()
+            }
+            Reflective => current_ray.dir.reflect(hit_rec.norm)
+        }
+        current_ray.pos = hit_rec.pos + current_ray.dir * 0.001
+    }
+    return Vec3f(0.0, 0.0, 0.0)
+}

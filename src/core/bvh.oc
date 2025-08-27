@@ -1,0 +1,82 @@
+import std::vector::Vector
+import std::vec::Vec3f
+import std::sort::nth_element_by  // def nth_element_by(data: &T, size: u32, n: u32, cmp: <unknown>): T
+import @core::object::Object
+import @core::bounds::Bounds
+import @core::ray::Ray
+import @core::hitrec::HitRec
+
+
+struct BVH<T> {
+    bounds: Bounds
+    is_leaf: bool
+    obj: T
+    l: &BVH<T>
+    r: &BVH<T>
+}
+
+def BVH::hit(&this, ray: &Ray, rec: &HitRec, parent: &Object): bool {
+    match .is_leaf {
+        true => return .obj.hit(ray, rec, parent)
+        false => {
+            let t_l = 0.0
+            let t_r = 0.0
+            let hit_l = .l.bounds.hit(ray, rec, &t_l, null, 1.0 / ray.dir)
+            let hit_r = .r.bounds.hit(ray, rec, &t_r, null, 1.0 / ray.dir)
+            if not hit_l and not hit_r then return false
+            if not hit_l then return .r.hit(ray, rec, parent)
+            if not hit_r then return .l.hit(ray, rec, parent)
+            if t_l < t_r {
+                let left = .l.hit(ray, rec, parent)
+                let right = .r.hit(ray, rec, parent)
+                return left or right
+            } else {
+                let right = .r.hit(ray, rec, parent)
+                let left = .l.hit(ray, rec, parent)
+                return right or left
+            }
+        }
+    }
+
+}
+
+def BVH::create(objects: &Vector<T>, start: u32, end: u32): &BVH<T> {
+    if end - start == 1 {
+        let object = objects[start]
+        let bounds = object.bounds()
+        let leaf: BVH<T>
+        leaf.is_leaf = true
+        leaf.obj = object
+        leaf.bounds = bounds
+        return @new leaf
+    } else {
+        let bounds = Bounds::empty()
+        for let i = start; i < end; i += 1 {
+            bounds += objects[i].bounds()
+        }
+        let box_sizes = bounds.max - bounds.min
+        
+        let dim = 0
+        if box_sizes[dim] < box_sizes[1] then dim = 1
+        if box_sizes[dim] < box_sizes[2] then dim = 2
+
+        let mid = (start + end) / 2
+        nth_element_by<T>(objects.data + start, end - start, mid, |l, r| {
+            let left = l.bounds().centroid()
+            let right = r.bounds().centroid()
+            return left[dim].compare(right[dim])
+        })
+        let l = BVH<T>::create(objects, start, mid)
+        let r = BVH<T>::create(objects, mid, end)
+
+        let internal: BVH<T>
+        internal.is_leaf = false
+        internal.l = l
+        internal.r = r
+        internal.bounds = bounds
+
+        return @new internal
+    }
+}
+
+

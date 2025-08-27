@@ -1,0 +1,22 @@
+import std::vec::{ Vec3f, Vec2f }
+import std::image::{ Image }
+import @utils::utils::get_interpolated
+
+
+enum Texture {
+    Color(color: Vec3f)
+    Image(img: &Image)
+    Checkerboard(scale: f32)
+}
+
+
+def Texture::get(this, uv: Vec2f): Vec3f {
+    return match this {
+        Color(c) => c
+        Image(i) => get_interpolated(i, uv.x, 1.0 - uv.y)  // Vec3f(uv.x, uv.y, 0.0)
+        Checkerboard(s) => {
+            let res = (uv * s).to_u32()
+            yield if (res.x + res.y) % 2 == 0 then Vec3f(0.0, 0.0, 0.0) else Vec3f(1.0, 1.0, 1.0)
+        }
+    }
+}
