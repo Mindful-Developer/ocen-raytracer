@@ -21,22 +21,27 @@ import @core::bvh::BVH
 def main() {
     let image_width = 1280
     let image_height = 720
-    let vr = VideoRenderer::create(SDL, image_width, image_height, 30)
+    let vr = VideoRenderer::create(FFMPEG, image_width, image_height, 30, "build/out.mp4")
+    let vr2 = VideoRenderer::create(SDL, image_width, image_height, 30)
     let num_samples = 8
     let focal_length = 4.5
     let camera_pos = Vec3f(0.12, 0.0, 6.0)
     let image = Image::new(image_width, image_height)
     let camera = Camera::make(image_width, image_height, focal_length, camera_pos, num_samples)
     let transformation = Matrix::for_rotate_x(PI / 4.0) * Matrix::for_scale(Vec3f(0.25, 1.0, 0.25))
+    
     let x = 0
     gc::init(&x)
-    for let i = 0; true; i += 1 {
+    for let i = 0; i < 120; i += 1 {
         let time = i as f32 / 30.0
         let scene = make_scene(time)
         render(image, &camera, &scene)
         vr.send_frame(image)
+        vr2.send_frame(image)
         gc::collect()
     }
+    vr.finish()
+
     // let scene = make_scene(0.0)
     // render(image, &camera, &scene)
     // image.save("./build/out.png")
@@ -68,12 +73,12 @@ def make_scene(time:f32): Scene {
             Matrix::for_scale(Vec3f(1.0, 0.5, 1.0))
         ),
         Transformed::new(
-            @new Object::Sphere(Image(Image::load("src/earth.png")), Diffused, Sphere(Vec3f(0.0, 0.0, 0.0), 0.5)),
+            @new Object::Sphere(Image(Image::load("assets/earth.png")), Diffused, Sphere(Vec3f(0.0, 0.0, 0.0), 0.5)),
             Matrix::for_translate(Vec3f(1.0, -0.01, -1.0)) * Matrix::for_rotate_y(time)
         ),
-        @new Object::Mesh(Checkerboard(20.0), Diffused, Mesh::from_obj("src/cube.obj")),
+        @new Object::Mesh(Checkerboard(20.0), Diffused, Mesh::from_obj("assets/cube.obj")),
         Transformed::new(
-            @new Object::Mesh(Image(Image::load("src/bouncy.png")), Diffused, Mesh::from_obj("src/teapot.obj")),
+            @new Object::Mesh(Image(Image::load("assets/bouncy.png")), Diffused, Mesh::from_obj("assets/teapot.obj")),
             Matrix::for_rotate_y(-time * 1.5)
         )
     ])
