@@ -87,7 +87,7 @@ def make_scene(time:f32): Scene {
         ),
         @new Object::Mesh(Checkerboard(20.0), Diffused, Mesh::from_obj("assets/cube.obj")),
         Transformed::new(
-            @new Object::Mesh(Color(Vec3f(1.0, 1.0, 1.0)), Refractive(1.0/1.33), Mesh::from_obj("assets/dragon.obj")),
+            @new Object::Mesh(Color(Vec3f(1.0, 1.0, 1.0)), Refractive(1.7), Mesh::from_obj("assets/dragon.obj")),
             Matrix::for_rotate_y(-time * 1.5) * Matrix::for_translate(Vec3f(0.0, -0.5, 2.0)) * Matrix::for_scale(Vec3f(0.2, 0.2, 0.2))
         )
     ], img_transform: Matrix::identity())//img: Image::load("assets/skybox.png"), img_transform: Matrix::for_rotate_y(PI / 4.0))

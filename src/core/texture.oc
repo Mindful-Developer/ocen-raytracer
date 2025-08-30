@@ -1,6 +1,6 @@
 import std::vec::{ Vec3f, Vec2f }
 import std::image::{ Image }
-import @utils::utils::get_interpolated
+import @utils::get_interpolated
 
 
 enum Texture {

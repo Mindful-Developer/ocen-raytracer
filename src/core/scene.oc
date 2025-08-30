@@ -2,7 +2,7 @@ import std::vec::Vec3f
 import std::image::Image
 import std::math::PI
 import std::random::{ RandomState, randf32 }
-import @utils::utils::get_interpolated
+import @utils::get_interpolated
 import @core::ray::Ray
 import @core::matrix::Matrix
 import @core::hitrec::HitRec
