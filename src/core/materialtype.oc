@@ -1,4 +1,6 @@
 enum MaterialType {
     Diffused
     Reflective
+    Refractive(idx: f32)
+    Light
 }

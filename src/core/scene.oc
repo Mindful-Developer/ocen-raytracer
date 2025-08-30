@@ -1,17 +1,31 @@
 import std::vec::Vec3f
+import std::image::Image
+import std::math::PI
 import std::random::{ RandomState, randf32 }
+import @utils::utils::get_interpolated
 import @core::ray::Ray
+import @core::matrix::Matrix
 import @core::hitrec::HitRec
 import @core::object::Object
 
 
 struct Scene {
     objects: $[&Object]
+    img: &Image = null
+    img_transform: Matrix
 }
 
 def Scene::sky_color(&this, ray: &Ray): Vec3f {
-    let a = 0.5 * (ray.dir.y + 1.0)
-    return (1.0 - a) * Vec3f(1.0, 1.0, 1.0) + a * Vec3f(0.5, 0.7, 1.0)
+    if not .img? {
+        let a = 0.5 * (ray.dir.y + 1.0)
+        //return (1.0 - a) * Vec3f(1.0, 1.0, 1.0) + a * Vec3f(0.5, 0.7, 1.0)
+        return Vec3f(0.05, 0.05, 0.05)
+    } else {
+        let d = (.img_transform % ray.dir).normalized()
+        let u = d.z.atan2(d.x) / (2.0 * PI) + 0.5
+        let v = 0.5 + d.y.asin() / PI
+        return get_interpolated(.img, u, 1.0 - v)
+    }
 }
 
 const num_bounces: u32 = 40
@@ -43,13 +57,42 @@ def Scene::hit(&this, ray: &Ray, rng: &RandomState): Vec3f {
         // if hit return hit_rec.obj.texture.get(hit_rec.uv)
 
         if not hit return .sky_color(&current_ray) * accum
-        accum = accum * hit_rec.obj.texture.get(hit_rec.uv)
+        let obj_color = hit_rec.obj.texture.get(hit_rec.uv)
+        if hit_rec.obj.mat is Light then return obj_color * accum
+        accum = accum * obj_color
         current_ray.dir = match hit_rec.obj.mat {
+            Light => std::panic()
             Diffused => {
                 let s = hit_rec.pos + hit_rec.norm + random_point_on_sphere(rng)
                 yield (s - hit_rec.pos).normalized()
             }
             Reflective => current_ray.dir.reflect(hit_rec.norm)
+            Refractive(idx) => {
+                let ri = 0.0
+                if current_ray.dir.dot(hit_rec.norm) < 0.0 {
+                    ri = 1.0 / idx
+                } else {
+                    ri = idx
+                    hit_rec.norm = -1.0 * hit_rec.norm
+                }
+                let unit_direction = current_ray.dir.normalized()
+                let cos_theta = unit_direction.dot(-1.0 * hit_rec.norm).min(1.0)
+                let sin_theta = f32::sqrt(1.0 - cos_theta * cos_theta)
+
+                let cannot_refract = ri * sin_theta > 1.0
+
+                let r0 = (1.0 - ri) / (1.0 + ri)
+                r0 = r0 * r0
+                let reflectance = r0 + (1.0 - r0) * f32::pow(1.0 - cos_theta, 5.0)
+
+                yield if cannot_refract or reflectance > randf32(rng) {
+                    yield unit_direction.reflect(hit_rec.norm)
+                } else {
+                    let r_out_perp = ri * (unit_direction + cos_theta * hit_rec.norm)
+                    let r_out_parallel = -f32::sqrt(f32::abs(1.0 - r_out_perp.length_sq())) * hit_rec.norm
+                    yield r_out_perp + r_out_parallel
+                }
+            }
         }
         current_ray.pos = hit_rec.pos + current_ray.dir * 0.001
     }
