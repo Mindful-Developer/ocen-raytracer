@@ -1,5 +1,6 @@
 import std::fs
 import std::vec::{ Vec3f, Vec2f }
+import std::value::Value
 import @objects::triangle::Triangle
 import @core::object::Object
 import @core::ray::Ray
@@ -69,4 +70,9 @@ def Mesh::from_obj(filename: str): Mesh {
     }
     let bvh = BVH<Triangle>::create(triangles, 0, triangles.size)
     return Mesh(triangles, bvh)
+}
+
+def Mesh::from_json(json: &Value): Mesh {
+    let filename = json["path"].as_cstr()
+    return Mesh::from_obj(filename)
 }

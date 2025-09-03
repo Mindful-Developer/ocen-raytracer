@@ -1,4 +1,6 @@
 import std::vec::{ Vec3f, Vec2f }
+import std::value::Value
+import @utils::{ vec_from_json }
 import @core::ray::Ray
 import @core::hitrec::HitRec
 import @core::object::Object
@@ -55,4 +57,36 @@ def Triangle::bounds(this): Bounds {
     bounds = bounds.add_point(.p0)
     bounds = bounds.add_point(.p1)
     return bounds.add_point(.p2)
+}
+
+def Triangle::from_json(json: &Value): Triangle {
+    let p0 = Vec3f(0.0, 0.0, 0.0)
+    let p1 = Vec3f(1.0, 0.0, 0.0)
+    let p2 = Vec3f(0.0, 1.0, 0.0)
+
+    let n0 = Vec3f(0.0, 0.0, 1.0)
+    let n1 = Vec3f(0.0, 0.0, 1.0)
+    let n2 = Vec3f(0.0, 0.0, 1.0)
+
+    let t0 = Vec2f(0.0, 0.0)
+    let t1 = Vec2f(1.0, 0.0)
+    let t2 = Vec2f(0.0, 1.0)
+
+    p0 = vec_from_json(json["p0"])
+    p1 = vec_from_json(json["p1"])
+    p2 = vec_from_json(json["p2"])
+
+    let default_norm = (p1 - p0).cross(p2 - p0).normalized()
+
+    if "n0" in json {
+        n0 = vec_from_json(json["n0"])
+    }
+    if "n1" in json {
+        n1 = vec_from_json(json["n1"])
+    }
+    if "n2" in json {
+        n2 = vec_from_json(json["n2"])
+    }
+
+    return Triangle(p0, p1, p2, n0, n1, n2, t0, t1, t2)
 }

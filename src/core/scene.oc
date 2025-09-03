@@ -1,22 +1,27 @@
-import std::vec::Vec3f
+import std::vec::{ Vec3f, Vec2f}
 import std::image::Image
 import std::math::PI
 import std::random::{ RandomState, randf32 }
+import std::value::Value
+import std::option::Option
+import @core::texture::Texture
 import @utils::get_interpolated
 import @core::ray::Ray
 import @core::matrix::Matrix
 import @core::hitrec::HitRec
 import @core::object::Object
+import @core::camera::Camera
 
 
 struct Scene {
+    camera: Camera
     objects: $[&Object]
-    img: &Image = null
+    img: Option<Texture>
     img_transform: Matrix
 }
 
 def Scene::sky_color(&this, ray: &Ray): Vec3f {
-    if not .img? {
+    if .img.is_none() {
         let a = 0.5 * (ray.dir.y + 1.0)
         //return (1.0 - a) * Vec3f(1.0, 1.0, 1.0) + a * Vec3f(0.5, 0.7, 1.0)
         return Vec3f(0.05, 0.05, 0.05)
@@ -24,7 +29,7 @@ def Scene::sky_color(&this, ray: &Ray): Vec3f {
         let d = (.img_transform % ray.dir).normalized()
         let u = d.z.atan2(d.x) / (2.0 * PI) + 0.5
         let v = 0.5 + d.y.asin() / PI
-        return get_interpolated(.img, u, 1.0 - v)
+        return .img!!.get(Vec2f(u, v))
     }
 }
 
@@ -97,4 +102,25 @@ def Scene::hit(&this, ray: &Ray, rng: &RandomState): Vec3f {
         current_ray.pos = hit_rec.pos + current_ray.dir * 0.001
     }
     return Vec3f(0.0, 0.0, 0.0)
+}
+
+def Scene::from_json(json: &Value): Scene {
+    let camera = Camera::from_json(json["camera"])
+    let objects: $[&Object] = $[]
+    for val in json["objects"].as_list().iter() {
+        objects.push(Object::from_json(val))
+    }
+    let tex = Option<Texture>::None
+    let transform = Matrix::identity()
+
+    if json.contains("skybox") {
+        let skybox = json["skybox"]
+        tex = Some(Texture::from_json(json["skybox"]))
+
+        if skybox.contains("transforms") {
+            transform = Matrix::from_json(skybox["transforms"])
+        }
+    }
+
+    return Scene(camera, objects, tex, transform)
 }

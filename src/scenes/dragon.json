@@ -1,0 +1,162 @@
+{
+    "name": "Test Scene",
+    "camera": {
+        "w": 1920,
+        "h": 1080,
+        "focal_len": 4.5,
+        "pos": [0.12, 0.0, 6.0],
+        "samples": 25
+    },
+    "skybox": {
+        "type": "color",
+        "value": [0.1, 0.1, 0.1],
+    },
+    "objects": [
+        {
+            "name": "left light",
+            "type": "plane",
+            "texture": {
+                "type": "color",
+                "value": [2.0, 1.0, 1.0]
+            },
+            "material": {
+                "type": "light",
+            },
+            "transforms": [
+                {
+                    "type": "scale",
+                    "value": [10.0, 10.0, 10.0]
+                },
+                {
+                    "type": "rotate_y",
+                    "angle": 90.0
+                },
+                {
+                    "type": "translate",
+                    "value": [10.0, 10.0, -1.0]
+                }
+            ]
+        },
+        {
+            "name": "right light",
+            "type": "plane",
+            "texture": {
+                "type": "color",
+                "value": [1.0, 1.0, 2.0]
+            },
+            "material": {
+                "type": "light",
+            },
+            "transforms": [
+                {
+                    "type": "scale",
+                    "value": [10.0, 10.0, 10.0]
+                },
+                {
+                    "type": "rotate_y",
+                    "angle": 90.0
+                },
+                {
+                    "type": "translate",
+                    "value": [-10.0, 10.0, -1.0]
+                }
+            ]
+        },
+        {
+            "name": "left shiny sphere",
+            "type": "sphere",
+            "pos": [-1.0, -0.21, -1.0],
+            "r": 0.3,
+            "texture": {
+                "type": "color",
+                "value": [0.8, 0.7, 0.6]
+            },
+            "material": {
+                "type": "reflective"
+            }
+        },
+        {
+            "name": "globe",
+            "type": "sphere",
+            "pos": [1.0, -0.01, -1.0],
+            "r": 0.5,
+            "texture": {
+                "type": "image",
+                "path": "assets/earth.png",
+                "brightness": 2.5
+            },
+            "material": {
+                "type": "diffused"
+            }
+        },
+        {
+            "type": "mesh",
+            "texture": {
+                "type": "color",
+                "value": [1.0, 1.0, 1.0]
+            },
+            "material": {
+                "type": "refractive",
+                "index": 1.7
+            },
+            "path": "assets/dragon.obj",
+            "transforms": [
+                {
+                    "type": "scale",
+                    "value": [0.2, 0.2, 0.2]
+                },
+                {
+                    "type": "translate",
+                    "value": [0.0, -0.5, 2.0]
+                }
+            ]
+        },
+        {
+            "name": "teapot",
+            "type": "mesh",
+            "path": "assets/teapot.obj",
+            "texture": {
+                "type": "image",
+                "path": "assets/bouncy.png",
+            },
+            "material": {
+                "type": "diffused"
+            },
+            "transforms": [
+                {
+                    "type": "rotate_z",
+                    "angle": -45.0
+                },
+                {
+                    "type": "translate",
+                    "value": [-2.2, 0.75, -2.0]
+                }
+            ]
+        },
+        {
+            "type": "plane",
+            "transforms": [
+                {
+                    "type": "scale",
+                    "value": [10.0, 10.0, 10.0]
+                }
+                {
+                    "type": "rotate_x",
+                    "angle": 90.0
+                },
+                {
+                    "type": "translate",
+                    "value": [0.0, -0.5, 0.0]
+                },
+            ],
+            "texture": {
+                "type": "checkerboard",
+                "scale": 20.0
+            },
+            "material": {
+                "type": "diffused"
+            },
+            
+        }
+    ]
+}

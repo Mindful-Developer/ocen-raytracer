@@ -6,6 +6,10 @@ import @objects::sphere::Sphere
 import @objects::triangle::Triangle
 import @objects::mesh::Mesh
 import @objects::transformed::Transformed
+import std::value::Value
+import @utils::error
+import @core::matrix::Matrix
+import @core::plane::Plane
 
 
 enum Object {
@@ -16,6 +20,7 @@ enum Object {
     Triangle(tri: Triangle)
     Mesh(mesh: Mesh)
     Transformed(trans: Transformed)
+    Plane(plane: Plane)
 }
 
 def Object::hit(&this, ray: &Ray, rec: &HitRec): bool {
@@ -24,6 +29,25 @@ def Object::hit(&this, ray: &Ray, rec: &HitRec): bool {
         Triangle(tri) => tri.hit(ray, rec, this)
         Mesh(mesh) => mesh.hit(ray, rec, this)
         Transformed(trans) => trans.hit(ray, rec, this)
+        Plane(plane) => plane.hit(ray, rec, this)
     }
     return did_hit
+}
+
+def Object::from_json(json: &Value): &Object {
+    let texture = Texture::from_json(json["texture"])
+    let mat = MaterialType::from_json(json["material"])
+
+    let obj: &Object = match json["type"].as_cstr() {
+        "sphere" => @new Sphere(texture, mat, Sphere::from_json(json)),
+        "triangle" => @new Triangle(texture, mat, Triangle::from_json(json)),
+        "mesh" => @new Mesh(texture, mat, Mesh::from_json(json)),
+        "plane" => @new Plane(texture, mat, Plane::from_json(json)),
+        else => error(json, "error: invalid object type")
+    }
+    if json.contains("transforms") {
+        let matrix = Matrix::from_json(json["transforms"])
+        obj = Transformed::new(obj, matrix)
+    }
+    return obj
 }

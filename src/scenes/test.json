@@ -1,0 +1,85 @@
+{
+    "name": "Test Scene",
+    "camera": {
+        "w": 1920,
+        "h": 1080,
+        "focal_len": 4.5,
+        "pos": [0.0, 0.0, 5.0],
+        "rot": [0.0, 0.0, 0.0],
+        "samples": 150
+    },
+    "skybox": {
+        "type": "image",
+        "path": "assets/skybox.png",
+        "transforms": [
+            {
+                "type": "rotate_x",
+                "angle": 0.0
+            }
+        ]
+    },
+    "objects": [
+        {
+            "type": "sphere",
+            "pos": [-1.0, 0.0, -1.0],
+            "r": 0.5,
+            "texture": {
+                "type": "color",
+                "value": [0.9, 0.9, 0.9]
+            },
+            "material": {
+                "type": "refractive",
+                "index": 1.7
+            }
+        },
+        {
+            "type": "sphere",
+            "pos": [0.0, 0.0, -1.2],
+            "r": 0.5,
+            "texture": {
+                "type": "color",
+                "value": [1.0, 1.0, 1.0]
+            },
+            "material": {
+                "type": "diffused"
+            }
+        },
+        {
+            "type": "sphere",
+            "pos": [1.0, 0.0, -1.0],
+            "r": 0.5,
+            "texture": {
+                "type": "color",
+                "value": [0.33, 0.4, 0.7]
+            },
+            "material": {
+                "type": "diffused"
+            }
+        },
+        {
+            "type": "plane",
+            "transforms": [
+                {
+                    "type": "scale",
+                    "value": [10.0, 10.0, 10.0]
+                }
+                {
+                    "type": "rotate_x",
+                    "angle": 90.0
+                },
+                {
+                    "type": "translate",
+                    "value": [0.0, -0.5, 0.0]
+                },
+            ],
+            "texture": {
+                "type": "checkerboard",
+                "scale": 20.0
+            },
+            "material": {
+                "type": "diffused"
+            },
+            
+        }
+    ]
+}

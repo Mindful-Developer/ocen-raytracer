@@ -1,5 +1,7 @@
 import std::vec::{ Vec3f }
 import std::math::{ radians }
+import std::value::Value
+import @utils::{ error, vec_from_json }
 
 // lol this is so bad... need a better formatting system
 [formatting
@@ -158,4 +160,34 @@ def Matrix::rotation_matrix_for(vec: Vec3f): Matrix {
     let theta = vec.y.atan2(vec.x)
     let phi = vec.z.acos()
     return Matrix::for_rotate_z(theta) * Matrix::for_rotate_y(phi)
+}
+
+def Matrix::from_json(json: &Value): Matrix {
+    let mat = Matrix::identity()
+    for val in json.as_list().iter() {
+        match val["type"].as_cstr() {
+            "translate" => {
+                let v = vec_from_json(val["value"])
+                mat = Matrix::for_translate(v) * mat
+            }
+            "scale" => {
+                let v = vec_from_json(val["value"])
+                mat = Matrix::for_scale(v) * mat
+            }
+            "rotate_x" => {
+                let a = val["angle"].as_float() as f32
+                mat = Matrix::for_rotate_x(radians(a)) * mat
+            }
+            "rotate_y" => {
+                let a = val["angle"].as_float() as f32
+                mat = Matrix::for_rotate_y(radians(a)) * mat
+            }
+            "rotate_z" => {
+                let a = val["angle"].as_float() as f32
+                mat = Matrix::for_rotate_z(radians(a)) * mat
+            }
+            else => error(val, "error: invalid matrix operation")
+        }
+    }
+    return mat
 }

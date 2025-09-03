@@ -1,9 +1,13 @@
 import std::vec::Vec3f
 import std::random::{ RandomState, randf32 }
+import std::value::Value
+import @utils::vec_from_json
 import @core::ray::Ray
 
 
 struct Camera {
+    width: u32
+    height: u32
     pos: Vec3f
     top_left: Vec3f
     du: Vec3f
@@ -30,7 +34,7 @@ def Camera::make(width: u32, height: u32, focal_length: f32, pos: Vec3f, num_sam
                       - viewport_v / 2.0)
     let pixel00_pos = upper_left + 0.5 * (du + dv)
 
-    return Camera(camera_center, pixel00_pos, du, dv, num_samples)
+    return Camera(width, height, camera_center, pixel00_pos, du, dv, num_samples)
 }
 
 def Camera::create_ray(&this, i: u32, j: u32, rng: &RandomState): Ray {
@@ -39,4 +43,19 @@ def Camera::create_ray(&this, i: u32, j: u32, rng: &RandomState): Ray {
         .pos,
         (pixel - .pos).normalized()
     )
+}
+
+def Camera::from_json(json: &Value): Camera {
+    let pos = vec_from_json(json["pos"])
+
+    let samples = if json.contains("samples") {
+        yield json["samples"].as_int() as u32
+    } else {
+        yield 1
+    }
+
+    let focal_len = json["focal_len"].as_float() as f32
+    let width = json["w"].as_int() as u32
+    let height = json["h"].as_int() as u32
+    return Camera::make(width, height, focal_len, pos, samples)
 }

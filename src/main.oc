@@ -6,6 +6,8 @@ import std::fs
 import std::random::{ RandomState, randf32 }
 import std::video_renderer::VideoRenderer
 import std::gc
+import std::json::parse_from_file
+import std::argparse::Parser
 import @core::camera::Camera
 import @core::matrix::Matrix
 import @core::scene::Scene
@@ -18,36 +20,18 @@ import @objects::transformed::Transformed
 import @core::bvh::BVH
 
 
-def main() {
-    let image_width = 1920 * 2
-    let image_height = 1080 * 2
-    //let vr = VideoRenderer::create(FFMPEG, image_width, image_height, 30, "build/out.mp4")
-    //let vr2 = VideoRenderer::create(SDL, image_width, image_height, 30)
-    let num_samples = 200
-    let focal_length = 4.5
-    let camera_pos = Vec3f(0.12, 0.0, 6.0)
-    let image = Image::new(image_width, image_height)
-    let camera = Camera::make(image_width, image_height, focal_length, camera_pos, num_samples)
-    let transformation = Matrix::for_rotate_x(PI / 4.0) * Matrix::for_scale(Vec3f(0.25, 1.0, 0.25))
-    
-    // let x = 0
-    // gc::init(&x)
-    // for let i = 0; i < 120; i += 1 {
-    //     let time = i as f32 / 30.0
-    //     let scene = make_scene(time)
-    //     render(image, &camera, &scene)
-    //     //vr.send_frame(image)
-    //     vr2.send_frame(image)
-    //     gc::collect()
-    // }
-    //vr.finish()
-
-    let scene = make_scene(0.0)
-    render(image, &camera, &scene)
-    image.save("./build/out.png")
+def main(argc: i32, argv: &str) {
+    let parser = Parser::make("ocen-raytracer")
+    let scene_path = parser.add_str("scene", help:"Path to the scene JSON file")
+    let out_file = parser.add_str("-o", help:"Path to the output image file", defolt:"./build/out.png")
+    parser.parse(argc, argv)
+    let scene = Scene::from_json(parse_from_file(*scene_path))
+    let image = Image::new(scene.camera.width, scene.camera.height)
+    render(image, &scene)
+    image.save(*out_file)
 }
 
-def render(img: &Image, camera: &Camera, scene: &Scene) {
+def render(img: &Image, scene: &Scene) {
     let completed = 0
 
     OMP_PARALLEL_FOR
@@ -55,52 +39,16 @@ def render(img: &Image, camera: &Camera, scene: &Scene) {
         let rng = RandomState::make(j)
         for let i = 0; i < img.width; i += 1 {
             let color = Vec3f(0.0, 0.0, 0.0)
-            for let s = 0; s < camera.num_samples ; s += 1 {
-                let ray = camera.create_ray(i, j, &rng)
+            for let s = 0; s < scene.camera.num_samples ; s += 1 {
+                let ray = scene.camera.create_ray(i, j, &rng)
                 color = color + scene.hit(&ray, &rng)
             }
-            img.set(i, j, Color::from_vec(color / camera.num_samples as f32))
+            img.set(i, j, Color::from_vec(color / scene.camera.num_samples as f32))
         }
         completed += 1
         print(f"\r  {completed}/{img.height}")
     }
 }
-
-def make_scene(time:f32): Scene {
-    return Scene($[
-        Transformed::new(
-            @new Object::Mesh(Color(Vec3f(2.0, 1.0, 1.0)), Light, Mesh::from_obj("assets/cube.obj")),
-            Matrix::for_translate(Vec3f(10.0, 10.0, -1.0)) * Matrix::for_rotate_z(PI / 2.0) * Matrix::for_scale(Vec3f(1.0, 1.0, 1.0))
-        ),
-        Transformed::new(
-            @new Object::Mesh(Color(Vec3f(1.0, 1.0, 2.0)), Light, Mesh::from_obj("assets/cube.obj")),
-            Matrix::for_translate(Vec3f(-10.0, 10.0, -1.0)) * Matrix::for_rotate_z(PI / -2.0) * Matrix::for_scale(Vec3f(1.0, 1.0, 1.0))
-        ),
-        @new Object::Sphere(Color(Vec3f(0.8, 0.7, 0.6)), Reflective, Sphere(Vec3f(-1.0, -0.21, -1.0), 0.3)),
-        Transformed::new(
-            @new Object::Mesh(Image(Image::load("assets/bouncy.png")), Diffused, Mesh::from_obj("assets/teapot.obj")),
-            Matrix::for_translate(Vec3f(-2.2, 0.75, -2.0)) * Matrix::for_rotate_z(PI / -4.0)
-        ),
-        Transformed::new(
-            @new Object::Sphere(ImageScaled(Image::load("assets/earth.png"), 1.5), Diffused, Sphere(Vec3f(0.0, 0.0, 0.0), 0.5)),
-            Matrix::for_translate(Vec3f(1.0, -0.01, -1.0)) * Matrix::for_rotate_y(time)
-        ),
-        @new Object::Mesh(Checkerboard(20.0), Diffused, Mesh::from_obj("assets/cube.obj")),
-        Transformed::new(
-            @new Object::Mesh(Color(Vec3f(1.0, 1.0, 1.0)), Refractive(1.7), Mesh::from_obj("assets/dragon.obj")),
-            Matrix::for_rotate_y(-time * 1.5) * Matrix::for_translate(Vec3f(0.0, -0.5, 2.0)) * Matrix::for_scale(Vec3f(0.2, 0.2, 0.2))
-        )
-    ], img_transform: Matrix::identity())//img: Image::load("assets/skybox.png"), img_transform: Matrix::for_rotate_y(PI / 4.0))
-}
-
-// def make_scene2(time:f32): Scene {
-//     return Scene($[
-//         @new Object::Sphere(Color(Vec3f(0.9, 0.9, 0.9)), Refractive(1.7), Sphere(Vec3f(-1.0, 0.0, -1.0), 0.5)),
-//         @new Object::Sphere(Color(Vec3f(1.0, 1.0, 1.0)), Diffused, Sphere(Vec3f(0.0, 0.0, -1.2), 0.5)),
-//         @new Object::Sphere(Color(Vec3f(0.33, 0.4, 0.7)), Diffused, Sphere(Vec3f(1.0, 0.0, -1.0), 0.5)),
-//         @new Object::Mesh(Checkerboard(20.0), Diffused, Mesh::from_obj("assets/cube.obj")),
-//     ])
-// }
 
 def std::image::Color::from_vec(vec: Vec3f): Color {
     let ir = (vec.x.clamp01() * 255.999) as u8
@@ -113,7 +61,7 @@ def std::image::Color::from_vec(vec: Vec3f): Color {
 
 /// internal
 
-@compiler c_flag "-O3 -fopenmp"
+@compiler c_flag "-O3 -Xpreprocessor -fopenmp -lomp"
 
 // This is a super-ugly hack to allow us to use C-preprocessor macros
 [extern "#pragma omp parallel for schedule(dynamic, 32)"]

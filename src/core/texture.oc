@@ -1,6 +1,7 @@
 import std::vec::{ Vec3f, Vec2f }
 import std::image::{ Image }
-import @utils::get_interpolated
+import std::value::Value
+import @utils::{ get_interpolated, vec_from_json, error }
 
 
 enum Texture {
@@ -14,11 +15,26 @@ enum Texture {
 def Texture::get(this, uv: Vec2f): Vec3f {
     return match this {
         Color(c) => c
-        ImageScaled(img, brightness) => get_interpolated(img, uv.x, 1.0 - uv.y) * brightness
+        ImageScaled(img, brightness) => (get_interpolated(img, uv.x, 1.0 - uv.y) * brightness).clamp01()
         Image(img) => get_interpolated(img, uv.x, 1.0 - uv.y)
         Checkerboard(s) => {
             let res = (uv * s).to_u32()
             yield if (res.x + res.y) % 2 == 0 then Vec3f(0.0, 0.0, 0.0) else Vec3f(1.0, 1.0, 1.0)
         }
+    }
+}
+
+def Texture::from_json(json: &Value): Texture {
+    return match json["type"].as_cstr() {
+        "color" => Color(vec_from_json(json["value"]))
+        "image" => {
+            let img = Image::load(json["path"].as_cstr())
+            match json.contains("brightness") {
+                true => return ImageScaled(img, json["brightness"].as_float() as f32)
+                false => return ImageScaled(img, 1.0)
+            }
+        }
+        "checkerboard" => Checkerboard(json["scale"].as_float() as f32)
+        else => error(json, "error: invalid object")
     }
 }

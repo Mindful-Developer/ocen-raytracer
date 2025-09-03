@@ -1,6 +1,19 @@
+import std::value::Value
+import @utils::error
+
 enum MaterialType {
     Diffused
     Reflective
     Refractive(idx: f32)
     Light
+}
+
+def MaterialType::from_json(json: &Value): MaterialType {
+    return match json["type"].as_cstr() {
+        "diffused" => Diffused
+        "reflective" => Reflective
+        "refractive" => Refractive(json["index"].as_float() as f32)
+        "light" => Light
+        else => error(json, "error: invalid material type")
+    }
 }

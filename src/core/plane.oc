@@ -1,0 +1,28 @@
+import std::vec::{ Vec3f, Vec2f }
+import std::value::Value
+import @core::ray::Ray
+import @core::hitrec::HitRec
+import @core::object::Object
+import @utils::{ vec_from_json }
+
+
+struct Plane {
+}
+
+def Plane::hit(&this, ray: &Ray, rec: &HitRec, parent: &Object): bool {
+    let t = -ray.pos.z / ray.dir.z
+    if t < 0.0001 or t > rec.t return false
+    let pos = ray.at(t)
+    if not (-1.0 <= pos.x <= 1.0 and -1.0 <= pos.y <= 1.0) return false
+    rec.t = t
+    rec.pos = pos
+    rec.norm = Vec3f(0.0, 0.0, 1.0)
+    if rec.norm.dot(ray.dir) > 0.0 then rec.norm = Vec3f(0.0, 0.0, -1.0)
+    rec.obj = parent
+    rec.uv = Vec2f(0.5 + pos.x * 0.5, 0.5 + pos.y * 0.5)
+    return true
+}
+
+def Plane::from_json(json: &Value): Plane {
+    return Plane()
+}

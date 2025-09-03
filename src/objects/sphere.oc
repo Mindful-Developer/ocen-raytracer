@@ -1,7 +1,9 @@
 import std::vec::Vec3f
+import std::value::Value
 import @core::ray::Ray
 import @core::hitrec::HitRec
 import @core::object::Object
+import @utils::{ vec_from_json }
 
 
 struct Sphere {
@@ -28,4 +30,17 @@ def Sphere::hit(&this, ray: &Ray, rec: &HitRec, parent: &Object): bool {
     rec.uv.y = 0.5 + rec.norm.y.asin() / std::math::PI
     rec.obj = parent
     return true
+}
+
+def Sphere::from_json(json: &Value): Sphere {
+    let pos = Vec3f(0.0, 0.0, 0.0)
+    let r = 1.0
+    
+    if json.contains("pos") {
+        pos = vec_from_json(json["pos"])
+    }
+    if json.contains("r") {
+        r = json["r"].as_float() as f32
+    }
+    return Sphere(pos, r)
 }
