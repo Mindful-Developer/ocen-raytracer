@@ -1,6 +1,6 @@
 import std::vector::Vector
 import std::vec::Vec3f
-import std::sort::nth_element_by  // def nth_element_by(data: &T, size: u32, n: u32, cmp: <unknown>): T
+import std::sort::{ nth_element_by, partition_by_closure }  // def nth_element_by(data: &T, size: u32, n: u32, cmp: <unknown>): T
 import @core::object::Object
 import @core::bounds::Bounds
 import @core::ray::Ray
@@ -40,6 +40,72 @@ def BVH::hit(&this, ray: &Ray, rec: &HitRec, parent: &Object): bool {
 
 }
 
+def BVH::split_equal(objects: &Vector<T>, start: u32, end: u32, bounds: Bounds, axis: u32): u32 {
+    let mid = (start + end) / 2
+    nth_element_by<T>(objects.data + start, end - start, mid, |a,b| {
+        let ka = (a.bounds().min + a.bounds().max)[axis]
+        let kb = (b.bounds().min + b.bounds().max)[axis]
+        return ka.compare(kb)
+    })
+    return mid
+}
+
+const NUM_BUCKETS: u32 = 12
+
+struct Bucket {
+    count: u32,
+    bounds: Bounds
+}
+
+def BVH::split_SAH(objects: &Vector<T>, start: u32, end: u32, bounds: Bounds, axis: u32): u32 {
+    let buckets: [Bucket; NUM_BUCKETS]
+
+    for let i = start; i < end; i++ {
+        let b = (NUM_BUCKETS as f32 * bounds.offset(objects[i].bounds().centroid())[axis]) as u32
+        if (b == NUM_BUCKETS) b = NUM_BUCKETS - 1
+        buckets[b].count += 1
+        buckets[b].bounds = buckets[b].bounds.join(objects[i].bounds())
+    }
+
+    let cost: [f32; NUM_BUCKETS - 1]
+    for let i = 0; i < NUM_BUCKETS - 1; ++i {
+        let b0 = Bounds::empty()
+        let b1 = Bounds::empty()
+        let c0 = 0
+        let c1 = 0
+        for let j = 0; j <= i; ++j {
+            b0 = b0.join(buckets[j].bounds)
+            c0 += buckets[j].count;
+        }
+        for let j = i + 1; j < NUM_BUCKETS; ++j {
+            b1 = b1.join(buckets[j].bounds)
+            c1 += buckets[j].count;
+        }
+        cost[i] = 0.125 + (c0 as f32 * b0.area() + c1 as f32 * b1.area()) / bounds.area();
+    }
+
+    let min_bucket = 0;
+    for let i = 1; i < NUM_BUCKETS - 1; ++i {
+        if cost[i] < cost[min_bucket] {
+            min_bucket = i;
+        }
+    }
+
+    let mid = start + partition_by_closure<T>(objects.data + start, end - start, |a| {
+        let off = bounds.offset(a.bounds().centroid())
+        let bucket = (NUM_BUCKETS as f32 * off[axis]) as u32
+        if (bucket == NUM_BUCKETS) bucket = NUM_BUCKETS - 1
+        return bucket <= min_bucket
+    })
+
+    // TODO: this is bad, but currently no support for multiple objects in node
+    if (mid == start or mid == end) 
+        mid = BVH<T>::split_equal(objects, start, end, bounds, axis)
+
+    return mid;
+}
+
+
 def BVH::create(objects: &Vector<T>, start: u32, end: u32): &BVH<T> {
     if end - start == 1 {
         let object = objects[start]
@@ -55,17 +121,13 @@ def BVH::create(objects: &Vector<T>, start: u32, end: u32): &BVH<T> {
             bounds += objects[i].bounds()
         }
         let box_sizes = bounds.max - bounds.min
-        
+
         let dim = 0
         if box_sizes[dim] < box_sizes[1] then dim = 1
         if box_sizes[dim] < box_sizes[2] then dim = 2
 
-        let mid = (start + end) / 2
-        nth_element_by<T>(objects.data + start, end - start, mid, |l, r| {
-            let left = l.bounds().centroid()
-            let right = r.bounds().centroid()
-            return left[dim].compare(right[dim])
-        })
+        let mid = BVH<T>::split_SAH(objects, start, end, bounds, dim)
+
         let l = BVH<T>::create(objects, start, mid)
         let r = BVH<T>::create(objects, mid, end)
 
