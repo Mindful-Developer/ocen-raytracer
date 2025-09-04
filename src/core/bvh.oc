@@ -1,6 +1,8 @@
 import std::vector::Vector
 import std::vec::Vec3f
 import std::sort::{ nth_element_by, partition_by_closure }  // def nth_element_by(data: &T, size: u32, n: u32, cmp: <unknown>): T
+import std::time::get_time_monotonic_ms
+import std::logging::{ log }
 import @core::object::Object
 import @core::bounds::Bounds
 import @core::ray::Ray
@@ -106,7 +108,7 @@ def BVH::split_SAH(objects: &Vector<T>, start: u32, end: u32, bounds: Bounds, ax
 }
 
 
-def BVH::create(objects: &Vector<T>, start: u32, end: u32): &BVH<T> {
+def BVH::create_rec(objects: &Vector<T>, start: u32, end: u32): &BVH<T> {
     if end - start == 1 {
         let object = objects[start]
         let bounds = object.bounds()
@@ -128,8 +130,8 @@ def BVH::create(objects: &Vector<T>, start: u32, end: u32): &BVH<T> {
 
         let mid = BVH<T>::split_SAH(objects, start, end, bounds, dim)
 
-        let l = BVH<T>::create(objects, start, mid)
-        let r = BVH<T>::create(objects, mid, end)
+        let l = BVH<T>::create_rec(objects, start, mid)
+        let r = BVH<T>::create_rec(objects, mid, end)
 
         let internal: BVH<T>
         internal.is_leaf = false
@@ -139,6 +141,14 @@ def BVH::create(objects: &Vector<T>, start: u32, end: u32): &BVH<T> {
 
         return @new internal
     }
+}
+
+def BVH::create(objects: &Vector<T>): &BVH<T> {
+    let start_time = get_time_monotonic_ms()
+    let bvh = BVH<T>::create_rec(objects, 0, objects.size)
+    let duration = get_time_monotonic_ms() - start_time
+    log(Info, f"BVH created with {objects.size} objects in {duration/1000.0:.2f}s")
+    return bvh
 }
 
 
