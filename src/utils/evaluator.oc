@@ -1,0 +1,373 @@
+
+//! Simple mathematical expression evaluator
+
+import compiler::lexer::{ Lexer }
+import compiler::tokens::{ Token, TokenType }
+import std::span::Span
+import std::option::Option
+import std::vec::{ Vec2f, Vec3f }
+import @utils::{ hsv_to_rgb }
+
+struct Evaluator {
+    tokens: $[&Token]
+    pos: u32
+    time: f32
+}
+
+[exits]
+def Evaluator::error(&this, span: Span, msg: str) {
+    println(`{span.start}: Error: {msg}`)
+    std::exit(1)
+}
+
+def Evaluator::token(&this): &Token {
+    assert .pos < .tokens.size
+    return .tokens[.pos]
+}
+
+def Evaluator::token_is(&this, kind: TokenType): bool {
+    if .pos >= .tokens.size return false
+    return .tokens[.pos].type == kind
+}
+
+enum Operator {
+    span: Span
+
+    Add
+    Sub
+    Mul
+    Div
+    Mod
+    Pow
+}
+
+def Operator::precedence(this): u32 => match this {
+    Add => 10
+    Sub => 10
+    Mul => 20
+    Div => 20
+    Mod => 20
+    Pow => 30
+}
+
+def Evaluator::op_from_token(&this, tok: &Token): Option<Operator> => match tok.type {
+    Plus => Some(Add(tok.span))
+    Minus => Some(Sub(tok.span))
+    Star => Some(Mul(tok.span))
+    Slash => Some(Div(tok.span))
+    Caret => Some(Pow(tok.span))
+    Percent => Some(Mod(tok.span))
+    else => None
+}
+
+def Evaluator::consume(&this, kind: TokenType): &Token {
+    if not .token_is(kind) {
+        .error(.token().span, f"Expected token {kind}, found {.token().type}")
+    }
+    let tok = .token()
+    .pos += 1
+    return tok
+}
+
+def Evaluator::handle_f32_function_call(&this, name: str): f32 => match name {
+    "sin" => .evaluate_f32_expr().sin()
+    "cos" => .evaluate_f32_expr().cos()
+    "tan" => .evaluate_f32_expr().tan()
+    "asin" => .evaluate_f32_expr().asin()
+    "acos" => .evaluate_f32_expr().acos()
+    "sqrt" => .evaluate_f32_expr().sqrt()
+    "abs" => .evaluate_f32_expr().abs()
+    "clamp01" => .evaluate_f32_expr().clamp01()
+    "floor" => .evaluate_f32_expr().floor()
+    "ceil" => .evaluate_f32_expr().ceil()
+    "degrees" | "deg" => std::math::degrees(.evaluate_f32_expr())
+    "radians" | "rad" => std::math::radians(.evaluate_f32_expr())
+    "min" => {
+        let a = .evaluate_f32_expr()
+        .consume(Comma)
+        let b = .evaluate_f32_expr()
+        yield f32::min(a, b)
+    }
+    "max" => {
+        let a = .evaluate_f32_expr()
+        .consume(Comma)
+        let b = .evaluate_f32_expr()
+        yield f32::max(a, b)
+    }
+    "clamp" => {
+        let v = .evaluate_f32_expr()
+        .consume(Comma)
+        let min = .evaluate_f32_expr()
+        .consume(Comma)
+        let max = .evaluate_f32_expr()
+        return f32::clamp(v, min, max)
+    }
+    "lerp" => {
+        let a = .evaluate_f32_expr()
+        .consume(Comma)
+        let b = .evaluate_f32_expr()
+        .consume(Comma)
+        let t = .evaluate_f32_expr()
+        return a * (1.0 - t) + b * t
+    }
+    "length" => {
+        let v = .evaluate_vec3_expr()
+        yield v.length()
+    }
+    else => .error(.token().span, f"Unknown function {name}()")
+}
+
+def Evaluator::handle_vec3_function_call(&this, name: str): Vec3f => match name {
+    "hsv" => {
+        let h = .evaluate_f32_expr()
+        .consume(Comma)
+        let s = .evaluate_f32_expr()
+        .consume(Comma)
+        let v = .evaluate_f32_expr()
+        yield hsv_to_rgb(h, s, v)
+    }
+    "lerp" => {
+        let a = .evaluate_vec3_expr()
+        .consume(Comma)
+        let b = .evaluate_vec3_expr()
+        .consume(Comma)
+        let t = .evaluate_f32_expr()
+        return a * (1.0 - t) + b * t
+    }
+    "clamp01" => {
+        let v = .evaluate_vec3_expr()
+        yield v.clamp01()
+    }
+    "clamp" => {
+        let v = .evaluate_vec3_expr()
+        .consume(Comma)
+        let min = .evaluate_vec3_expr()
+        .consume(Comma)
+        let max = .evaluate_vec3_expr()
+        yield Vec3f(
+            v.x.clamp(min.x, max.x),
+            v.y.clamp(min.y, max.y),
+            v.z.clamp(min.z, max.z
+        ))
+    }
+    else => {
+        let val = .handle_f32_function_call(name)
+        yield Vec3f(val, val, val)
+    }
+}
+
+def Evaluator::evaluate_f32_atom(&this): f32 => match .token().type {
+    FloatLiteral => .consume(FloatLiteral).text.to_f32()
+    IntLiteral => .consume(IntLiteral).text.to_i32() as f32
+    Identifier => {
+        let ident = .consume(Identifier).text
+        yield if {
+            .token_is(OpenParen) => {
+                .consume(OpenParen)
+                let res = .handle_f32_function_call(ident)
+                .consume(CloseParen)
+                yield res
+            }
+            else => match ident {
+                "time" => .time
+                "pi" | "PI" => std::math::PI
+                "e" | "E" => 2.718281828459045
+                "tau" | "TAU" => std::math::TAU
+                "inf" | "INF" => f32::inf()
+                else => .error(.token().span, f"Unknown identifier {ident}")
+            }
+        }
+    }
+    OpenParen => {
+        .consume(OpenParen)
+        let res = .evaluate_f32_expr()
+        if .token_is(Comma) {
+            .error(.token().span, "Use [,,] for Vec3f literals, cannot use (,,) here")
+        }
+        .consume(CloseParen)
+        return res
+    }
+    OpenSquare => .error(.token().span, "Expected a scalar value, cannot use a vector here")
+    else => .error(.token().span, f"Unexpected token {.token().type}")
+}
+
+def shunting_yard<T>(
+    parse_operand_fn: @fn(): T,
+    parse_operator_fn: @fn(): Option<Operator>,
+    eval_fn: @fn(T, Operator, T): T,
+): T {
+    let operands: $[T] = $[]
+    defer operands.free()
+    let operators: $[Operator] = $[]
+    defer operators.free()
+
+    operands.push(parse_operand_fn())
+    while true {
+        let maybe_op = parse_operator_fn()
+        if maybe_op.is_none() break
+        let op = maybe_op!!
+
+        while operators.size > 0 and operators[operators.size - 1].precedence() >= op.precedence() {
+            let right = operands.pop()
+            let left = operands.pop()
+            operands.push(eval_fn(left, operators.pop(), right))
+        }
+        operators.push(op)
+        operands.push(parse_operand_fn())
+    }
+
+    while operators.size > 0 {
+        let right = operands.pop()
+        let left = operands.pop()
+        operands.push(eval_fn(left, operators.pop(), right))
+    }
+    assert operands.size == 1
+    let res = operands[0]
+    // defer frees here
+    return res
+}
+
+def Evaluator::evaluate_vec3_atom_from_f32_atom(&this): Vec3f {
+    let res = .evaluate_f32_atom()
+    return Vec3f(res, res, res)
+}
+
+def Evaluator::evaluate_vec3_atom(&this): Vec3f => match .token().type {
+    Identifier => {
+        let ident = .consume(Identifier).text
+        yield if {
+            .token_is(OpenParen) => {
+                .consume(OpenParen)
+                let res = .handle_vec3_function_call(ident)
+                .consume(CloseParen)
+                yield res
+            }
+            else => {
+                // un-consume the identifier, try to treat it as a scalar
+                .pos -= 1
+                yield .evaluate_vec3_atom_from_f32_atom()
+            }
+        }
+    }
+    OpenSquare => {
+        .consume(OpenSquare)
+        let x = .evaluate_f32_expr()
+        .consume(Comma)
+        let y = .evaluate_f32_expr()
+        .consume(Comma)
+        let z = .evaluate_f32_expr()
+        .consume(CloseSquare)
+        return Vec3f(x, y, z)
+    }
+    OpenParen => {
+        .consume(OpenParen)
+        let res = .evaluate_vec3_expr()
+        if .token_is(Comma) {
+            .error(.token().span, "Use [,,] for Vec3f literals, cannot use (,,) here")
+        }
+        .consume(CloseParen)
+        return res
+    }
+    else => .evaluate_vec3_atom_from_f32_atom()
+}
+
+def Evaluator::evaluate_f32_prefix(&this): f32 => match .token().type {
+    Minus => {
+        .consume(Minus)
+        yield -.evaluate_f32_prefix()
+    }
+    Plus => {
+        .consume(Plus)
+        yield .evaluate_f32_prefix()
+    }
+    else => .evaluate_f32_atom()
+}
+
+def Evaluator::evaluate_vec3_prefix(&this): Vec3f => match .token().type {
+    Minus => {
+        .consume(Minus)
+        yield -1.0 * .evaluate_vec3_prefix()
+    }
+    Plus => {
+        .consume(Plus)
+        yield .evaluate_vec3_prefix()
+    }
+    else => .evaluate_vec3_atom()
+}
+
+def Evaluator::consume_if_operator(&this): Option<Operator> {
+    let maybe_op = .op_from_token(.token())
+    if maybe_op.is_some() {
+        .consume(.token().type)
+    }
+    return maybe_op
+}
+
+def Evaluator::evaluate_f32_expr(&this): f32 {
+    return shunting_yard<f32>(
+        parse_operand_fn: || => .evaluate_f32_prefix(),
+        parse_operator_fn: || => .consume_if_operator(),
+        eval_fn: |a: f32, op: Operator, b: f32|: f32 => match op {
+            Add => a + b,
+            Sub => a - b,
+            Mul => a * b,
+            Div => a / b,
+            Pow => a.pow(b),
+            Mod => a % b,
+        },
+    )
+}
+
+def Evaluator::evaluate_vec3_expr(&this): Vec3f {
+    return shunting_yard<Vec3f>(
+        parse_operand_fn: || => .evaluate_vec3_prefix(),
+        parse_operator_fn: || => .consume_if_operator(),
+        eval_fn: |a: Vec3f, op: Operator, b: Vec3f|: Vec3f => match op {
+            Add => a + b,
+            Sub => a - b,
+            Mul => a * b,
+            Div => a / b,
+            Pow => .error(op.span, "Exponentiation not supported for vectors"),
+            Mod => .error(op.span, "Modulo not supported for vectors"),
+        },
+    )
+}
+
+def evaluate_f32_expr(time: f32, expr: str): f32 {
+    let lexer = Lexer::make(expr, "<input>")
+    let tokens = lexer.lex()
+    let evaluator = Evaluator(tokens, 0, time)
+    return evaluator.evaluate_f32_expr()
+}
+
+def evaluate_vec3_expr(time: f32, expr: str): Vec3f {
+    let lexer = Lexer::make(expr, "<input>")
+    let tokens = lexer.lex()
+    let evaluator = Evaluator(tokens, 0, time)
+    return evaluator.evaluate_vec3_expr()
+}
+
+def main() {
+    assert evaluate_f32_expr(0.0, "1 + 2 * 3") == 7.0
+    assert evaluate_f32_expr(0.0, "(1 + 2) * 3") == 9.0
+    assert evaluate_f32_expr(0.0, "10 / 2 + 3 * 4 - 5") == 12.0
+    assert evaluate_f32_expr(1.5, "time * 2 + 3") == 6.0
+    assert evaluate_f32_expr(2.0, "1 + 2 * (3 + time) / 4 - 5") == -1.5
+    assert evaluate_f32_expr(0.0, "sin(pi / 2) + cos(0)") == 2.0
+    assert evaluate_f32_expr(0.0, "2 ^ 3 + 4") == 12.0
+    assert evaluate_f32_expr(0.0, "min(3, 5) + max(2, 4)") == 7.0
+    assert evaluate_f32_expr(0.0, "clamp(10, 0, 5)") == 5.0
+    assert evaluate_f32_expr(0.0, "lerp(0, 10, 0.25)") == 2.5
+
+    assert evaluate_vec3_expr(0.0, "[1, 2, 3] + [4, 5, 6]") == Vec3f(5.0, 7.0, 9.0)
+    assert evaluate_vec3_expr(0.0, "[1, 2, 3] * 2") == Vec3f(2.0, 4.0, 6.0)
+    assert evaluate_vec3_expr(0.0, "3 + [1, 2, 3]") == Vec3f(4.0, 5.0, 6.0)
+    assert evaluate_vec3_expr(0.0, "[1, 2, 3] - [0.5, 1.5, 2.5]") == Vec3f(0.5, 0.5, 0.5)
+    assert evaluate_vec3_expr(0.0, "[2, 4, 6] / 2") == Vec3f(1.0, 2.0, 3.0)
+
+    assert evaluate_vec3_expr(1.0, "hsv(time, 1, 1)") == Vec3f(1.0, 0.0, 0.0)
+    assert evaluate_vec3_expr(0.0, "sin(pi / 2) + cos(0) + [1, 1, 1]") == Vec3f(3.0, 3.0, 3.0)
+    assert evaluate_vec3_expr(0.0, "[sin(pi/2), 3, 4.0] + hsv(sin(pi/2))") == Vec3f(2.0, 3.0, 4.0)
+
+    println("All tests passed!")
+}

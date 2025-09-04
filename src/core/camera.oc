@@ -1,7 +1,7 @@
 import std::vec::Vec3f
 import std::random::{ RandomState, randf32 }
 import std::value::Value
-import @utils::vec_from_json
+import @utils::{ vec_from_json, float_from_json, int_from_json }
 import @core::ray::Ray
 
 
@@ -49,13 +49,13 @@ def Camera::from_json(json: &Value): Camera {
     let pos = vec_from_json(json["pos"])
 
     let samples = if json.contains("samples") {
-        yield json["samples"].as_int() as u32
+        yield int_from_json(json["samples"]) as u32
     } else {
         yield 1
     }
 
-    let focal_len = json["focal_len"].as_float() as f32
-    let width = json["w"].as_int() as u32
-    let height = json["h"].as_int() as u32
+    let focal_len = float_from_json(json["focal_len"])
+    let width = int_from_json(json["w"]) as u32
+    let height = int_from_json(json["h"]) as u32
     return Camera::make(width, height, focal_len, pos, samples)
 }
