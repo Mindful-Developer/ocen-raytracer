@@ -68,7 +68,7 @@ def Mesh::from_obj(filename: str): Mesh {
             else => {}
         }
     }
-    let bvh = BVH<Triangle>::create(triangles, 0, triangles.size)
+    let bvh = BVH<Triangle>::create(triangles)
     return Mesh(triangles, bvh)
 }
 
