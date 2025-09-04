@@ -3,7 +3,7 @@ import std::value::Value
 import @core::ray::Ray
 import @core::hitrec::HitRec
 import @core::object::Object
-import @utils::{ vec_from_json }
+import @utils::{ vec_from_json, float_from_json }
 
 
 struct Sphere {
@@ -40,7 +40,7 @@ def Sphere::from_json(json: &Value): Sphere {
         pos = vec_from_json(json["pos"])
     }
     if json.contains("r") {
-        r = json["r"].as_float() as f32
+        r = float_from_json(json["r"])
     }
     return Sphere(pos, r)
 }

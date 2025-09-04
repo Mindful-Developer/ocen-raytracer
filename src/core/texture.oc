@@ -1,7 +1,7 @@
 import std::vec::{ Vec3f, Vec2f }
 import std::image::{ Image }
 import std::value::Value
-import @utils::{ get_interpolated, vec_from_json, error }
+import @utils::{ get_interpolated, vec_from_json, float_from_json, error }
 
 
 enum Texture {
@@ -30,11 +30,11 @@ def Texture::from_json(json: &Value): Texture {
         "image" => {
             let img = Image::load(json["path"].as_cstr())
             match json.contains("brightness") {
-                true => return ImageScaled(img, json["brightness"].as_float() as f32)
+                true => return ImageScaled(img, float_from_json(json["brightness"]))
                 false => return ImageScaled(img, 1.0)
             }
         }
-        "checkerboard" => Checkerboard(json["scale"].as_float() as f32)
+        "checkerboard" => Checkerboard(float_from_json(json["scale"])),
         else => error(json, "error: invalid object")
     }
 }

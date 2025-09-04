@@ -1,7 +1,7 @@
 import std::vec::{ Vec3f }
 import std::math::{ radians }
 import std::value::Value
-import @utils::{ error, vec_from_json }
+import @utils::{ error, vec_from_json, float_from_json }
 
 // lol this is so bad... need a better formatting system
 [formatting
@@ -175,15 +175,15 @@ def Matrix::from_json(json: &Value): Matrix {
                 mat = Matrix::for_scale(v) * mat
             }
             "rotate_x" => {
-                let a = val["angle"].as_float() as f32
+                let a = float_from_json(val["angle"])
                 mat = Matrix::for_rotate_x(radians(a)) * mat
             }
             "rotate_y" => {
-                let a = val["angle"].as_float() as f32
+                let a = float_from_json(val["angle"])
                 mat = Matrix::for_rotate_y(radians(a)) * mat
             }
             "rotate_z" => {
-                let a = val["angle"].as_float() as f32
+                let a = float_from_json(val["angle"])
                 mat = Matrix::for_rotate_z(radians(a)) * mat
             }
             else => error(val, "error: invalid matrix operation")

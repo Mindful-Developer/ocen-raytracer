@@ -1,8 +1,30 @@
 import std::vec::Vec3f
 import std::value::Value
 import std::image::{ Image, bilinear_interp }
+import .evaluator::evaluate_f32_expr
 
 
+def hsv_to_rgb(h: f32, s: f32, v: f32): Vec3f {
+    // h, s, v are all in range [0, 1]
+    h = (h % 1.0) * 360.0
+    s = s.clamp01()
+    v = v.clamp01()
+
+    let c = v * s
+    let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs())
+    let m = v - c
+
+    let res = if {
+        h < 60.0 => Vec3f(c, x, 0.0)
+        h < 120.0 => Vec3f(x, c, 0.0)
+        h < 180.0 => Vec3f(0.0, c, x)
+        h < 240.0 => Vec3f(0.0, x, c)
+        h < 300.0 => Vec3f(x, 0.0, c)
+        else => Vec3f(c, 0.0, x)
+    }
+
+    return res + m
+}
 
 def get_interpolated(img: &Image, xf: f32, yf: f32): Vec3f {
     xf = xf.clamp01() * (img.width - 1) as f32
@@ -47,12 +69,30 @@ def ensure(json: &Value, cond: bool, msg: str) {
 def vec_from_json(json: &Value): Vec3f {
     ensure(json, json.is(List) and json.as_list().size == 3, "Expected a list of 3 numbers")
     return Vec3f(
-        x: json[0].as_float() as f32,
-        y: json[1].as_float() as f32,
-        z: json[2].as_float() as f32,
+        x: float_from_json(json[0]),
+        y: float_from_json(json[1]),
+        z: float_from_json(json[2]),
     )
 }
 
-def render_json(path: str) {
-    
+def float_from_json(json: &Value): f32 {
+    match json.type {
+        Integer => return json.as_int() as f32
+        Float => return json.as_float() as f32
+        // TODO: Pass along time somehow, or maybe just put it in a global variable?
+        String => return evaluate_f32_expr(0.0, json.as_cstr())
+        else => error(json, "Expected a number or expression")
+    }
+}
+
+// TODO: Make a generic number_from_json function returning f64 which we can cast?
+//       Will need to change evaluator to use f64 then as well
+def int_from_json(json: &Value): i32 {
+    match json.type {
+        Integer => return json.as_int() as i32
+        Float => return json.as_float() as i32
+        // TODO: Pass along time somehow, or maybe just put it in a global variable?
+        String => return evaluate_f32_expr(0.0, json.as_cstr()) as i32
+        else => error(json, "Expected an integer or expression")
+    }
 }
