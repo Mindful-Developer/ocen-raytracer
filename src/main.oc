@@ -9,10 +9,10 @@ import std::video_renderer::VideoRenderer
 
 def main(argc: i32, argv: &str) {
     let start_time = 0.0
-    let duration = 5.0
-    let fps = 5
+    let duration = 360.0
+    let fps = 1.0 / 12.0
 
-    let fps_interval = 1.0 / (duration * fps as f32)
+    let fps_interval = 1.0 / fps as f32
     init_logging()
 
     let parser = Parser::make("ocen-raytracer")
@@ -24,19 +24,22 @@ def main(argc: i32, argv: &str) {
     log(Info, f"Rendering {scene.camera.width}x{scene.camera.height} image with {scene.camera.num_samples} samples per pixel")
     let image = Image::new(scene.camera.width, scene.camera.height)
     log(Info, f"Loading scene from {*scene_path}")
-    let vr = VideoRenderer::create(FFMPEG, image.width, image.height, fps)
-   
+    let vr = VideoRenderer::create(FFMPEG, image.width, image.height, 30)
+
+    let counter = 0
     for let i = start_time; i <= start_time + duration; i += fps_interval {
         scene = Scene::from_json(parse_from_file(*scene_path), i)
-        render(image, &scene)
+        render(image, &scene, counter)
         vr.send_frame(image)
+        //image.save(f"build/out-{counter:03d}.png")
+        counter++
     }
     vr.finish()
     log(Info, f"Saving image to {*out_file}")
-    image.save(*out_file)
+    //image.save(*out_file)
 }
 
 
 /// internal
 
-@compiler c_flag "-Ofast -ffast-math -ftree-vectorize -flto=full -march=native -Xpreprocessor -fopenmp -lomp -Wno-extra-tokens"
+@compiler c_flag "-Ofast -ffast-math -ftree-vectorize -march=native -fopenmp -Wno-extra-tokens"

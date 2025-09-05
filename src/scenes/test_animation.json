@@ -9,7 +9,7 @@
         "focal_len": 4.5,
         "pos": [0.0, 0.0, 5.0],
         "rot": [0.0, 0.0, 0.0],
-        "samples": 10
+        "samples": 5
     },
     "skybox": {
         "type": "image",

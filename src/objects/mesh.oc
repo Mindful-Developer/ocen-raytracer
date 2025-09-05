@@ -21,7 +21,15 @@ def Mesh::hit(&this, ray: &Ray, rec: &HitRec, parent: &Object): bool {
     return .bvh.hit(ray, rec, parent)
 }
 
+let cache: ${str: Mesh} = null
+
 def Mesh::from_obj(filename: str): Mesh {
+    if not cache? {
+        cache = ${}
+    }
+    let res = cache.get_item(filename)
+    if res? return res.value
+
     let file = fs::read_file(filename)
     defer file.free()
 
@@ -69,7 +77,10 @@ def Mesh::from_obj(filename: str): Mesh {
         }
     }
     let bvh = BVH<Triangle>::create(triangles)
-    return Mesh(triangles, bvh)
+    let mesh = Mesh(triangles, bvh)
+    cache[filename] = mesh
+    
+    return mesh
 }
 
 def Mesh::from_json(json: &Value): Mesh {

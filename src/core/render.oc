@@ -10,13 +10,13 @@ import @core::scene::Scene
 
 
 
-def render(img: &Image, scene: &Scene) {
+def render(img: &Image, scene: &Scene, seed: u32 = 0) {
     let start = get_time_monotonic_ms()
     let completed = 0
 
     OMP_PARALLEL_FOR
     for let j = 0; j < img.height; j += 1 {
-        let rng = RandomState::make(j)
+        let rng = RandomState::make((seed * 10 + 5) * img.height + j)
         for let i = 0; i < img.width; i += 1 {
             let color = Vec3f(0.0, 0.0, 0.0)
             for let s = 0; s < scene.camera.num_samples ; s += 1 {
