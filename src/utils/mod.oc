@@ -2,6 +2,7 @@ import std::vec::Vec3f
 import std::value::Value
 import std::image::{ Image, bilinear_interp }
 import .evaluator::evaluate_f32_expr
+import @core::scene::current_time
 
 
 def hsv_to_rgb(h: f32, s: f32, v: f32): Vec3f {
@@ -79,8 +80,7 @@ def float_from_json(json: &Value): f32 {
     match json.type {
         Integer => return json.as_int() as f32
         Float => return json.as_float() as f32
-        // TODO: Pass along time somehow, or maybe just put it in a global variable?
-        String => return evaluate_f32_expr(0.0, json.as_cstr())
+        String => return evaluate_f32_expr(current_time, json.as_cstr())
         else => error(json, "Expected a number or expression")
     }
 }
@@ -91,8 +91,7 @@ def int_from_json(json: &Value): i32 {
     match json.type {
         Integer => return json.as_int() as i32
         Float => return json.as_float() as i32
-        // TODO: Pass along time somehow, or maybe just put it in a global variable?
-        String => return evaluate_f32_expr(0.0, json.as_cstr()) as i32
+        String => return evaluate_f32_expr(current_time, json.as_cstr()) as i32
         else => error(json, "Expected an integer or expression")
     }
 }

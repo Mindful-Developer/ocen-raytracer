@@ -104,7 +104,10 @@ def Scene::hit(&this, ray: &Ray, rng: &RandomState): Vec3f {
     return Vec3f(0.0, 0.0, 0.0)
 }
 
-def Scene::from_json(json: &Value): Scene {
+let current_time: f32
+
+def Scene::from_json(json: &Value, time: f32): Scene {
+    current_time = time
     let camera = Camera::from_json(json["camera"])
     let objects: $[&Object] = $[]
     for val in json["objects"].as_list().iter() {

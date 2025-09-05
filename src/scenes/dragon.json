@@ -1,15 +1,15 @@
 {
     "name": "Test Scene",
     "camera": {
-        "w": 1920,
-        "h": 1080,
+        "w": 1280,
+        "h": 720,
         "focal_len": 4.5,
         "pos": [0.12, 0.0, 6.0],
-        "samples": 25
+        "samples": 250
     },
     "skybox": {
-        "type": "color",
-        "value": [0.1, 0.1, 0.1],
+        "type": "image",
+        "path": "assets/skybox.png",
     },
     "objects": [
         {
@@ -17,7 +17,7 @@
             "type": "plane",
             "texture": {
                 "type": "color",
-                "value": [2.0, 1.0, 1.0]
+                "value": [1.5, 1.5, 1.5]
             },
             "material": {
                 "type": "light",
@@ -37,31 +37,31 @@
                 }
             ]
         },
-        {
-            "name": "right light",
-            "type": "plane",
-            "texture": {
-                "type": "color",
-                "value": [1.0, 1.0, 2.0]
-            },
-            "material": {
-                "type": "light",
-            },
-            "transforms": [
-                {
-                    "type": "scale",
-                    "value": [10.0, 10.0, 10.0]
-                },
-                {
-                    "type": "rotate_y",
-                    "angle": 90.0
-                },
-                {
-                    "type": "translate",
-                    "value": [-10.0, 10.0, -1.0]
-                }
-            ]
-        },
+        // {
+        //     "name": "right light",
+        //     "type": "plane",
+        //     "texture": {
+        //         "type": "color",
+        //         "value": [1.0, 1.0, 2.0]
+        //     },
+        //     "material": {
+        //         "type": "light",
+        //     },
+        //     "transforms": [
+        //         {
+        //             "type": "scale",
+        //             "value": [10.0, 10.0, 10.0]
+        //         },
+        //         {
+        //             "type": "rotate_y",
+        //             "angle": 90.0
+        //         },
+        //         {
+        //             "type": "translate",
+        //             "value": [-10.0, 10.0, -1.0]
+        //         }
+        //     ]
+        // },
         {
             "name": "left shiny sphere",
             "type": "sphere",

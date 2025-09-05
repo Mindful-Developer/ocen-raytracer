@@ -1,0 +1,53 @@
+import std::image::{ Image, Color }
+import std::vec::Vec3f
+import std::random::RandomState
+import std::video_renderer::VideoRenderer
+import std::gc
+import std::logging::log
+import std::time::get_time_monotonic_ms
+import @core::scene::Scene
+
+
+
+
+def render(img: &Image, scene: &Scene) {
+    let start = get_time_monotonic_ms()
+    let completed = 0
+
+    OMP_PARALLEL_FOR
+    for let j = 0; j < img.height; j += 1 {
+        let rng = RandomState::make(j)
+        for let i = 0; i < img.width; i += 1 {
+            let color = Vec3f(0.0, 0.0, 0.0)
+            for let s = 0; s < scene.camera.num_samples ; s += 1 {
+                let ray = scene.camera.create_ray(i, j, &rng)
+                color = color + scene.hit(&ray, &rng)
+            }
+            img.set(i, j, Color::from_vec(color / scene.camera.num_samples as f32))
+        }
+        completed += 1
+        print(f"\r  {completed}/{img.height}")
+    }
+    println("")
+    let duration = get_time_monotonic_ms() - start
+    log(Info, f"Rendering completed in {duration/1000.0:.2f}s")
+}
+
+// def Foo::from_json(json: &Value): Foo {
+    
+// }
+
+
+
+
+def std::image::Color::from_vec(vec: Vec3f): Color {
+    let ir = (vec.x.clamp01() * 255.999) as u8
+    let ig = (vec.y.clamp01() * 255.999) as u8
+    let ib = (vec.z.clamp01() * 255.999) as u8
+
+    return Color(ir, ig, ib)
+}
+
+// This is a super-ugly hack to allow us to use C-preprocessor macros
+[extern "#pragma omp parallel for schedule(dynamic, 1)"]
+let OMP_PARALLEL_FOR: i32

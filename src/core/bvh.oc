@@ -39,7 +39,6 @@ def BVH::hit(&this, ray: &Ray, rec: &HitRec, parent: &Object): bool {
             }
         }
     }
-
 }
 
 def BVH::split_equal(objects: &Vector<T>, start: u32, end: u32, bounds: Bounds, axis: u32): u32 {
